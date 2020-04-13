@@ -2,20 +2,18 @@
 COMPILER	= iverilog
 # シミュレータ
 SIMULATOR	= vvp
-# インクルードパスの指定。これをちゃんとしておかないとDEPENDS(依存)ファイルがうまく作れない
+# インクルードパスの指定
 INCLUDE		= ./src
-# 生成される実行ファイル
-TARGETS		= terc.vcd
-# 生成されるバイナリファイルの出力ディレクトリ
-TARGETDIR	= .
+# 生成されるVCD
+VCD			= terc.vcd
+# 生成されるVCDの出力ディレクトリ
+VCDDIR		= .
 # ソースコードの位置
 SRCROOT		= ./src
 # 中間バイナリファイルの出力ディレクトリ
 VVPROOT		= ./vvp
-# ソースディレクトリを元にforeach命令で全cppファイルをリスト化する
-SOURCES		= $(wildcard $(SRCROOT)/*.v) # $(foreach dir, $(SRCDIRS), $(wildcard $(dir)/*.v))
-# 上記のcppファイルのリストを元にオブジェクトファイル名を決定
-VVPS		= $(addprefix $(VVPROOT)/, $(SOURCES:.v=.vvp))
+# ソースディレクトリを元に全てのverilogソースをリスト化
+SOURCES		= $(wildcard $(SRCROOT)/*.v) $(wildcard $(SRCROOT)/*.sv)
 
 # トップレベルモジュール
 ifdef target
@@ -24,15 +22,31 @@ else
 	TOPLELVEL = terc
 endif
 
+TEST_TL = $(TOPLELVEL)_tb
 
-# 依存ファイルを元に実行ファイルを作る
-$(TARGETS): $(TOPLELVEL).vvp
+# vcdのルール
+.vcd.vvp:
 	$(SIMULATOR) $(VVPROOT)/$(TOPLELVEL).vvp
 
+# vvpのルール
 $(TOPLELVEL).vvp: $(SOURCES)
 	$(COMPILER) -o $(VVPROOT)/$@ -I $(SRCROOT) -s $(TOPLELVEL) $^
 
-all: $(TARGETS)
+# テストベンチのルール
+$(TEST_TL).vvp: $(SOURCES)
+	$(COMPILER) -o $(VVPROOT)/$@ -I $(SRCROOT) -s $(TEST_TL) $^
+
+vcd: $(TOPLELVEL).vcd
+
+vvp: $(TOPLELVEL).vvp
+
+run: $(TOPLELVEL).vvp
+	$(SIMULATOR) $(VVPROOT)/$(TOPLELVEL).vvp
+
+test: $(TEST_TL).vvp
+	$(SIMULATOR) $(VVPROOT)/$(TEST_TL).vvp
+
+all: vcd
 
 clean: 
 	rm -f $(VVPS)
